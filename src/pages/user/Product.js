@@ -239,30 +239,35 @@ const Product = () => {
                                             title={p.name}
                                             description={
                                                 p.discount ? (
-                                                    <>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        {/* Giá gốc */}
                                                         <span
                                                             style={{
                                                                 textDecoration: 'line-through',
-                                                                color: '#999'
+                                                                color: '#999',
+                                                                fontSize: 13
                                                             }}
                                                         >
                                                             {formatCurrency(p.originalPrice)}
                                                         </span>
-                                                        <br />
+
+                                                        {/* Giá sau giảm */}
                                                         <span
                                                             style={{
                                                                 color: '#d4380d',
-                                                                fontWeight: 'bold'
+                                                                fontWeight: 'bold',
+                                                                fontSize: 16
                                                             }}
                                                         >
                                                             {formatCurrency(p.finalPrice)}
                                                         </span>
-                                                    </>
+                                                    </div>
                                                 ) : (
                                                     <span
                                                         style={{
                                                             color: '#d4380d',
-                                                            fontWeight: 'bold'
+                                                            fontWeight: 'bold',
+                                                            fontSize: 16
                                                         }}
                                                     >
                                                         {formatCurrency(p.price)}
