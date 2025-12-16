@@ -5,30 +5,41 @@ import { Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 
 const { Title } = Typography;
-
 const API_URL = process.env.REACT_APP_API_URL;
+const PAGE_SIZE = 6;
 
-// 👉 render giá
+/* ===== Render giá ===== */
 const renderPrice = (p) => {
-    if (!p.price || p.price === 0) return <span style={{ color: "#999" }}>Liên hệ</span>;
+    if (!p.price || p.price === 0)
+        return <span style={{ color: "#999" }}>Liên hệ</span>;
 
     if (p.discount) {
         return (
             <>
-                <span style={{ textDecoration: "line-through", color: "#999", marginRight: 8 }}>
-                    {p.price?.toLocaleString()}đ
+                <span
+                    style={{
+                        textDecoration: "line-through",
+                        color: "#999",
+                        marginRight: 8,
+                    }}
+                >
+                    {p.price.toLocaleString()}đ
                 </span>
                 <span style={{ color: "#d4380d", fontWeight: "bold" }}>
-                    {p.finalPrice?.toLocaleString()}đ
+                    {p.finalPrice.toLocaleString()}đ
                 </span>
             </>
         );
     }
 
-    return <span style={{ color: "#d4380d", fontWeight: "bold" }}>{p.price?.toLocaleString()}đ</span>;
+    return (
+        <span style={{ color: "#d4380d", fontWeight: "bold" }}>
+            {p.price.toLocaleString()}đ
+        </span>
+    );
 };
 
-// 👉 render ảnh
+/* ===== Render ảnh ===== */
 const renderCover = (p) => (
     <div style={{ position: "relative" }}>
         {p.discount && (
@@ -49,24 +60,28 @@ const renderCover = (p) => (
                 -{p.discount.percentage}%
             </div>
         )}
+
         {p.image ? (
             <img
-                src={`${p.image}`}
+                src={p.image}
                 alt={p.name}
-                style={{ height: 160, objectFit: "cover", borderRadius: "12px 12px 0 0", width: "100%" }}
+                style={{
+                    height: 160,
+                    width: "100%",
+                    objectFit: "cover",
+                    borderRadius: "12px 12px 0 0",
+                }}
             />
         ) : (
             <div
                 style={{
                     height: 160,
-                    width: "100%",
                     borderRadius: "12px 12px 0 0",
                     background: "#f0f0f0",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     color: "#999",
-                    fontSize: 14,
                 }}
             >
                 Chưa có ảnh
@@ -76,36 +91,38 @@ const renderCover = (p) => (
 );
 
 const SearchPage = () => {
-    const [searchParams] = useSearchParams();
-    const keyword = searchParams.get("keyword") || "";
+    const [params] = useSearchParams();
+    const keyword = params.get("keyword") || "";
 
     const [loading, setLoading] = useState(true);
     const [products, setProducts] = useState([]);
-    const [pagination, setPagination] = useState({ current: 1, pageSize: 6, total: 0 });
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
 
-    const fetchData = async (page = 1, pageSize = 6) => {
+    const fetchData = async (currentPage = 1) => {
         setLoading(true);
         try {
             const res = await axios.get(`${API_URL}/products`, {
-                params: { page, pageSize, search: keyword || null },
+                params: {
+                    search: keyword,
+                    offset: (currentPage - 1) * PAGE_SIZE,
+                    limit: PAGE_SIZE,
+                },
             });
-            const { data, total } = res.data;
-            setProducts(data);
-            setPagination({ current: page, pageSize, total });
+
+            setProducts(res.data.rows || []);
+            setTotal(res.data.count || 0);
+            setPage(currentPage);
         } catch (err) {
-            message.error("Lỗi khi tải sản phẩm");
+            message.error("Lỗi khi tải kết quả tìm kiếm");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchData(1, pagination.pageSize);
+        if (keyword) fetchData(1);
     }, [keyword]);
-
-    const handlePageChange = (page, pageSize) => {
-        fetchData(page, pageSize);
-    };
 
     if (loading) {
         return (
@@ -116,8 +133,11 @@ const SearchPage = () => {
     }
 
     return (
-        <div style={{ padding: "20px" }}>
-            <Title level={4}>Kết quả tìm kiếm cho "{keyword}"</Title>
+        <div style={{ padding: 20 }}>
+            <Title level={4}>
+                Kết quả tìm kiếm cho "{keyword}"
+            </Title>
+
             {products.length === 0 ? (
                 <p>Không tìm thấy sản phẩm nào.</p>
             ) : (
@@ -125,24 +145,32 @@ const SearchPage = () => {
                     style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                        gap: "16px",
+                        gap: 16,
                     }}
                 >
                     {products.map((p) => (
-                        <Card hoverable key={p.id} cover={renderCover(p)} style={{ borderRadius: 12 }}>
-                            <Card.Meta title={<Link to={`/products/${p.id}`}>{p.name}</Link>} description={renderPrice(p)} />
+                        <Card
+                            hoverable
+                            key={p.id}
+                            cover={renderCover(p)}
+                            style={{ borderRadius: 12 }}
+                        >
+                            <Card.Meta
+                                title={<Link to={`/products/${p.slug}`}>{p.name}</Link>}
+                                description={renderPrice(p)}
+                            />
                         </Card>
                     ))}
                 </div>
             )}
 
-            {pagination.total > pagination.pageSize && (
-                <div style={{ textAlign: "center", marginTop: 20 }}>
+            {total > PAGE_SIZE && (
+                <div style={{ textAlign: "center", marginTop: 24 }}>
                     <Pagination
-                        current={pagination.current}
-                        pageSize={pagination.pageSize}
-                        total={pagination.total}
-                        onChange={handlePageChange}
+                        current={page}
+                        pageSize={PAGE_SIZE}
+                        total={total}
+                        onChange={fetchData}
                     />
                 </div>
             )}
