@@ -51,7 +51,7 @@ const Product = () => {
                 }
             });
 
-            setProducts(res.data.rows || []);
+            setProducts(res.data.data || []);
         } catch (err) {
             console.error(err);
             toast.error('Lỗi khi tải sản phẩm');
