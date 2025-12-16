@@ -248,7 +248,7 @@ const Product = () => {
                                                                 fontSize: 13
                                                             }}
                                                         >
-                                                            {formatCurrency(p.originalPrice)}
+                                                            {formatCurrency(Number(p.originalPrice))}
                                                         </span>
 
                                                         {/* Giá sau giảm */}
@@ -259,7 +259,7 @@ const Product = () => {
                                                                 fontSize: 16
                                                             }}
                                                         >
-                                                            {formatCurrency(p.finalPrice)}
+                                                            {formatCurrency(Number(p.finalPrice))}
                                                         </span>
                                                     </div>
                                                 ) : (
@@ -270,7 +270,7 @@ const Product = () => {
                                                             fontSize: 16
                                                         }}
                                                     >
-                                                        {formatCurrency(p.price)}
+                                                        {formatCurrency(Number(p.price))}
                                                     </span>
                                                 )
                                             }
