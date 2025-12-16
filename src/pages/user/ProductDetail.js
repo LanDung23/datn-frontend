@@ -1,15 +1,22 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { Typography, Spin, InputNumber, Button } from 'antd';
-import { ShoppingCartOutlined } from '@ant-design/icons';
+import {
+    Typography,
+    Spin,
+    InputNumber,
+    Button,
+    Tag,
+    Divider
+} from 'antd';
+import { ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { CartContext } from './CartContext';
 import toast, { Toaster } from 'react-hot-toast';
 import 'antd/dist/reset.css';
-import {formatCurrency} from '../../utils/helpers';
+import { formatCurrency } from '../../utils/helpers';
 
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
 const API_URL = process.env.REACT_APP_API_URL;
 
 const ProductDetail = () => {
@@ -23,15 +30,14 @@ const ProductDetail = () => {
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
 
-    // Lấy sản phẩm
+    /* ================= FETCH PRODUCT ================= */
     useEffect(() => {
         const fetchProduct = async () => {
             try {
                 const res = await axios.get(`${API_URL}/products/${slug}`);
                 setProduct(res.data.data);
             } catch (err) {
-                console.error(err);
-                toast.error("Không tải được sản phẩm");
+                toast.error('Không tải được sản phẩm');
             } finally {
                 setLoading(false);
             }
@@ -39,98 +45,176 @@ const ProductDetail = () => {
         fetchProduct();
     }, [slug]);
 
-    // Thêm vào giỏ hàng
+    /* ================= ADD TO CART ================= */
     const handleAddToCart = async () => {
-        if (!productId) {
-            toast.error("Không tìm thấy ID sản phẩm!");
-            return;
-        }
+        if (!productId) return toast.error('Không tìm thấy ID sản phẩm');
 
         const user = JSON.parse(localStorage.getItem('user'));
-        const userId = user?.id;
-
-        if (!userId) {
-            toast.error('Bạn cần đăng nhập để thêm sản phẩm');
-            navigate('/auth/login');
-            return;
+        if (!user?.id) {
+            toast.error('Bạn cần đăng nhập');
+            return navigate('/auth/login');
         }
 
-        const payload = { userId, productId, quantity };
-
         try {
-            const res = await axios.post(`${API_URL}/carts/add`, payload);
-            if (res.status === 200 || res.status === 201) {
-                toast.success(`Đã thêm "${product.name}" vào giỏ hàng`);
-                fetchCartCount();
-            } else {
-                toast.error('Thêm vào giỏ hàng thất bại');
-            }
-        } catch (err) {
-            console.error(err);
+            await axios.post(`${API_URL}/carts/add`, {
+                userId: user.id,
+                productId,
+                quantity
+            });
+            toast.success('Đã thêm vào giỏ hàng');
+            fetchCartCount();
+        } catch {
             toast.error('Thêm vào giỏ hàng thất bại');
         }
     };
 
-    // Mua ngay
-    const handleBuyNow = () => {
-        toast.success(`Bạn đang mua ${quantity} sản phẩm "${product.name}"`);
-    };
+    if (loading)
+        return (
+            <div style={{ padding: 80, textAlign: 'center' }}>
+                <Spin size="large" />
+            </div>
+        );
 
-    if (loading) return <div style={{ textAlign: 'center', padding: 50 }}><Spin size="large" /></div>;
-    if (!product) return <div style={{ padding: 24 }}>Sản phẩm không tồn tại</div>;
+    if (!product) return <div>Sản phẩm không tồn tại</div>;
 
     return (
-        <div style={{ padding: 24, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            <Toaster position="top-right" /> {/* Toast container */}
-            <div style={{ flex: '0 0 400px' }}>
-                <img
-                    src={product.image ? `${product.image}` : undefined}
-                    alt={product.name}
-                    style={{ width: '100%', height: 400, objectFit: 'cover', borderRadius: 8, background: '#f0f0f0' }}
-                    onError={(e) => { e.target.src = ''; e.target.style.background = '#f0f0f0'; e.target.alt = 'Chưa có ảnh'; }}
-                />
-            </div>
+        <div style={{ background: '#f5f5f5', padding: '32px 16px' }}>
+            <Toaster position="top-right" />
 
-            <div style={{ flex: '1 1 400px', maxWidth: 600 }}>
-                <Title level={2}>{product.name}</Title>
-
-                {product.discount ? (
-                    <div style={{ marginBottom: 16 }}>
-                        <div style={{ textDecoration: 'line-through', color: '#888', fontSize: 18 }}>
-                            {formatCurrency(Number(product.originalPrice))}
-                        </div>
-                        <div style={{ color: 'red', fontSize: 24, fontWeight: 'bold' }}>
-                            {formatCurrency(Number(product.finalPrice))}
-                        </div>
-                        <div style={{ fontSize: 14, color: '#555' }}>
-                            Giảm giá: {product.discount.percentage}% ({product.discount.name})
-                        </div>
+            <div
+                style={{
+                    maxWidth: 1200,
+                    margin: '0 auto',
+                    background: '#fff',
+                    borderRadius: 16,
+                    padding: 32,
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1.2fr',
+                    gap: 40
+                }}
+            >
+                {/* ===== IMAGE ===== */}
+                <div>
+                    <div
+                        style={{
+                            borderRadius: 12,
+                            overflow: 'hidden',
+                            border: '1px solid #eee'
+                        }}
+                    >
+                        <img
+                            src={product.image}
+                            alt={product.name}
+                            style={{
+                                width: '100%',
+                                height: 420,
+                                objectFit: 'cover'
+                            }}
+                        />
                     </div>
-                ) : (
-                    <div style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 16 }}>
-                        {formatCurrency(Number(product.price)) || 'Liên hệ'}
-                    </div>
-                )}
 
-                <Paragraph><strong>Danh mục:</strong> {product.category?.name || 'Không xác định'}</Paragraph>
-                <Paragraph><strong>Mô tả:</strong> {product.description || 'Không có mô tả'}</Paragraph>
-                <Paragraph><strong>Trạng thái:</strong> {product.is_active ? 'Còn hàng' : 'Hết hàng'}</Paragraph>
-
-                <div style={{ margin: '16px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <span>Số lượng:</span>
-                    <InputNumber min={1} max={100} value={quantity} onChange={setQuantity} />
+                    {product.discount && (
+                        <Tag
+                            color="red"
+                            style={{
+                                marginTop: 12,
+                                fontSize: 14,
+                                padding: '4px 12px'
+                            }}
+                        >
+                            -{product.discount.percentage}% {product.discount.name}
+                        </Tag>
+                    )}
                 </div>
 
-                <div style={{ display: 'flex', gap: 12 }}>
-                    <Button type="primary" onClick={handleBuyNow}>Mua ngay</Button>
-                    <Button
-                        type="primary"
-                        icon={<ShoppingCartOutlined />}
-                        disabled={product.is_active === 0}
-                        onClick={handleAddToCart}
+                {/* ===== INFO ===== */}
+                <div>
+                    <Title level={2}>{product.name}</Title>
+
+                    {/* PRICE */}
+                    <div style={{ margin: '16px 0' }}>
+                        {product.discount ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <Text delete style={{ fontSize: 18, color: '#999' }}>
+                                    {formatCurrency(product.originalPrice)}
+                                </Text>
+                                <Text strong style={{ fontSize: 28, color: '#d4380d' }}>
+                                    {formatCurrency(product.finalPrice)}
+                                </Text>
+                            </div>
+                        ) : (
+                            <Text strong style={{ fontSize: 28, color: '#d4380d' }}>
+                                {product.price ? formatCurrency(product.price) : 'Liên hệ'}
+                            </Text>
+                        )}
+                    </div>
+
+                    <Divider />
+
+                    <Paragraph>
+                        <strong>Danh mục:</strong>{' '}
+                        {product.category?.name || 'Không xác định'}
+                    </Paragraph>
+
+                    <Paragraph>
+                        <strong>Tình trạng:</strong>{' '}
+                        {product.is_active ? (
+                            <Tag color="green">Còn hàng</Tag>
+                        ) : (
+                            <Tag color="red">Hết hàng</Tag>
+                        )}
+                    </Paragraph>
+
+                    <Paragraph>
+                        <strong>Mô tả:</strong>
+                        <br />
+                        {product.description || 'Không có mô tả'}
+                    </Paragraph>
+
+                    {/* QUANTITY */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 16,
+                            marginTop: 24
+                        }}
                     >
-                        Thêm vào giỏ
-                    </Button>
+                        <Text strong>Số lượng:</Text>
+                        <InputNumber
+                            min={1}
+                            max={100}
+                            value={quantity}
+                            onChange={setQuantity}
+                        />
+                    </div>
+
+                    {/* ACTION */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            gap: 16,
+                            marginTop: 32
+                        }}
+                    >
+                        <Button
+                            type="primary"
+                            size="large"
+                            icon={<ThunderboltOutlined />}
+                            style={{ background: '#fa541c' }}
+                        >
+                            Mua ngay
+                        </Button>
+
+                        <Button
+                            size="large"
+                            icon={<ShoppingCartOutlined />}
+                            onClick={handleAddToCart}
+                            disabled={!product.is_active}
+                        >
+                            Thêm vào giỏ
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
