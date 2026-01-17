@@ -1,249 +1,311 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from "react";
-import { Card, Typography, Spin, Input, message, Row, Col } from "antd";
+import { Card, Typography, Spin, Input, message, Row, Col, Badge, Empty } from "antd";
 import { useNavigate } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { LeftOutlined, RightOutlined, ToolOutlined, SafetyOutlined, DollarOutlined, RocketOutlined } from "@ant-design/icons";
+import { 
+    LeftOutlined, 
+    RightOutlined, 
+    ToolOutlined, 
+    SafetyOutlined, 
+    DollarOutlined, 
+    RocketOutlined,
+    SearchOutlined 
+} from "@ant-design/icons";
 import axios from "axios";
 import { formatCurrency } from "../../utils/helpers";
 
 const { Search } = Input;
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
+const API_URL = process.env.REACT_APP_API_URL;
 
-const API_URL = process.env.REACT_APP_API_URL
+// --- Styled Components (Inline for single file) ---
+const arrowButtonStyle = (direction, hover) => ({
+    position: "absolute",
+    top: "45%",
+    [direction]: -15,
+    zIndex: 10,
+    cursor: "pointer",
+    background: hover ? "#cf1322" : "#fff",
+    borderRadius: "50%",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+    width: 40,
+    height: 40,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.3s ease",
+    transform: "translateY(-50%)",
+});
 
-// Arrow Button
 const ArrowButton = ({ onClick, direction }) => {
     const [hover, setHover] = useState(false);
-    const styleBase = {
-        position: "absolute",
-        top: "40%",
-        transform: "translateY(-50%)",
-        zIndex: 2,
-        cursor: "pointer",
-        background: hover ? "#d4380d" : "#fff",
-        borderRadius: "50%",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-        width: 36,
-        height: 36,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "all 0.3s ease",
-    };
-    const style = direction === "left" ? { ...styleBase, left: -20 } : { ...styleBase, right: -20 };
     return (
-        <div
-            style={style}
-            onClick={onClick}
-            onMouseEnter={() => setHover(true)}
+        <div 
+            style={arrowButtonStyle(direction, hover)} 
+            onClick={onClick} 
+            onMouseEnter={() => setHover(true)} 
             onMouseLeave={() => setHover(false)}
         >
-            {direction === "left" ? <LeftOutlined style={{ fontSize: 18, color: hover ? "#fff" : "#333" }} /> :
-                <RightOutlined style={{ fontSize: 18, color: hover ? "#fff" : "#333" }} />}
+            {direction === "left" ? 
+                <LeftOutlined style={{ color: hover ? "#fff" : "#333" }} /> : 
+                <RightOutlined style={{ color: hover ? "#fff" : "#333" }} />
+            }
         </div>
     );
 };
 
-// Render Price
-const renderPrice = (p) => {
-    if (!p.price || p.price === 0) return <span style={{ color: "#999" }}>Liên hệ</span>;
-    if (p.discount) {
-        return (
-            <>
-                <span style={{ textDecoration: "line-through", color: "#999", marginRight: 8 }}>{formatCurrency(Number(p.price))}</span>
-                <span style={{ color: "#d4380d", fontWeight: "bold" }}>{formatCurrency(Number(p.finalPrice))}</span>
-            </>
-        );
-    }
-    return <span style={{ color: "#d4380d", fontWeight: "bold" }}>{formatCurrency(Number(p.price))}</span>;
-};
-
-// Render Cover
-const renderCover = (p) => (
-    <div style={{ position: "relative" }}>
-        {p.discount && <div style={{ position: "absolute", top: 8, left: 8, background: "#cf1322", color: "#fff", padding: "2px 6px", borderRadius: 6, fontSize: 12, fontWeight: "bold", zIndex: 1 }}>-{p.discount.percentage}%</div>}
-        {p.image ? <img src={`${p.image}`} alt={p.name} style={{ height: 160, objectFit: "cover", borderRadius: "12px 12px 0 0", width: "100%" }} /> :
-            <div style={{ height: 160, width: "100%", borderRadius: "12px 12px 0 0", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", color: "#999", fontSize: 14 }}>Chưa có ảnh</div>}
-    </div>
-);
-
-// Slider Settings
-const sliderSettings = {
-    dots: true,
-    infinite: false,
-    speed: 500,
-    slidesToShow: 5,
-    slidesToScroll: 5,
-    arrows: true,
-    swipeToSlide: true,
-    draggable: true,
-    nextArrow: <ArrowButton direction="right" />,
-    prevArrow: <ArrowButton direction="left" />,
-    responsive: [
-        { breakpoint: 1400, settings: { slidesToShow: 4, slidesToScroll: 4 } },
-        { breakpoint: 1100, settings: { slidesToShow: 3, slidesToScroll: 3 } },
-        { breakpoint: 768, settings: { slidesToShow: 2, slidesToScroll: 2 } },
-        { breakpoint: 520, settings: { slidesToShow: 1, slidesToScroll: 1 } },
-    ],
-};
-
-// Product Card with Hover Effect + Link Wrapper
+// --- Product Components ---
 const ProductCard = ({ product }) => {
     const navigate = useNavigate();
-
-    const handleClick = () => {
-        navigate(`/products/${product.slug}`, { state: { id: product.id } });
-    };
+    const handleClick = () => navigate(`/products/${product.slug}`, { state: { id: product.id } });
 
     return (
-        <Card
-            hoverable
-            onClick={handleClick}
-            style={{
-                minWidth: 220,
-                maxWidth: 260,
-                borderRadius: 12,
-                transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                margin: "0 auto",
-                cursor: "pointer"
-            }}
-            cover={renderCover(product)}
-            onMouseEnter={e => {
-                e.currentTarget.style.transform = "translateY(-8px)";
-                e.currentTarget.style.boxShadow = "0 12px 20px rgba(0,0,0,0.25)";
-            }}
-            onMouseLeave={e => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)";
-            }}
-            styles={{
-                body: { padding: 16 }
-            }}
+        <Badge.Ribbon 
+            text={`-${product.discount?.percentage}%`} 
+            color="#cf1322" 
+            style={{ display: product.discount ? "block" : "none" }}
         >
-            <Card.Meta
-                title={product.name}
-                description={renderPrice(product)}
-            />
-        </Card>
+            <Card
+                hoverable
+                onClick={handleClick}
+                style={{ 
+                    borderRadius: 12, 
+                    overflow: 'hidden', 
+                    margin: "10px 8px",
+                    border: '1px solid #f0f0f0'
+                }}
+                cover={
+                    <div style={{ height: 180, overflow: 'hidden', background: '#f5f5f5' }}>
+                        {product.image ? (
+                            <img 
+                                src={product.image} 
+                                alt={product.name} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            />
+                        ) : (
+                            <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <ToolOutlined style={{ fontSize: 40, color: '#ccc' }} />
+                            </div>
+                        )}
+                    </div>
+                }
+            >
+                <div style={{ minHeight: 80 }}>
+                    <Text strong ellipsis={{ tooltip: product.name }} style={{ fontSize: 15, display: 'block' }}>
+                        {product.name}
+                    </Text>
+                    <div style={{ marginTop: 8 }}>
+                        {product.price && product.price > 0 ? (
+                            <>
+                                {product.discount ? (
+                                    <>
+                                        <Text delete type="secondary" style={{ fontSize: 12, marginRight: 8 }}>
+                                            {formatCurrency(Number(product.price))}
+                                        </Text>
+                                        <Text style={{ color: "#cf1322", fontWeight: 700, fontSize: 16 }}>
+                                            {formatCurrency(Number(product.finalPrice))}
+                                        </Text>
+                                    </>
+                                ) : (
+                                    <Text style={{ color: "#cf1322", fontWeight: 700, fontSize: 16 }}>
+                                        {formatCurrency(Number(product.price))}
+                                    </Text>
+                                )}
+                            </>
+                        ) : (
+                            <Text type="secondary">Liên hệ giá</Text>
+                        )}
+                    </div>
+                </div>
+            </Card>
+        </Badge.Ribbon>
     );
 };
 
-const ProductSlider = ({ title, products }) => {
+const ProductSlider = ({ title, products, loading, icon }) => {
+    if (loading) return <div style={{ textAlign: "center", padding: 40 }}><Spin /></div>;
     if (!products || products.length === 0) return null;
 
-    const isFewProducts = products.length < 6;
+    const sliderSettings = {
+        dots: false,
+        infinite: products.length > 5,
+        speed: 500,
+        slidesToShow: 5,
+        slidesToScroll: 1,
+        nextArrow: <ArrowButton direction="right" />,
+        prevArrow: <ArrowButton direction="left" />,
+        responsive: [
+            { breakpoint: 1200, settings: { slidesToShow: 4 } },
+            { breakpoint: 992, settings: { slidesToShow: 3 } },
+            { breakpoint: 768, settings: { slidesToShow: 2 } },
+            { breakpoint: 480, settings: { slidesToShow: 1 } },
+        ],
+    };
 
     return (
-        <div style={{ marginTop: 50 }}>
-            <Title level={4}>{title}</Title>
-
-            {isFewProducts ? (
-                <div
-                    style={{
-                        display: "flex",
-                        gap: 24,
-                        flexWrap: "wrap",
-                        rowGap: 28,
-                        padding: "0 8px",
-                    }}
-                >
-                    {products.map(product => (
-                        <div key={product.id} style={{ minWidth: 220, maxWidth: 260, flex: "1 0 220px" }}>
-                            <ProductCard product={product} />
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <Slider {...sliderSettings}>
-                    {products.map(product => (
-                        <div key={product.id} style={{ padding: "0 16px 30px" }}>
-                            <ProductCard product={product} />
-                        </div>
-                    ))}
-                </Slider>
-            )}
+        <div style={{ marginBottom: 40 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, borderBottom: '2px solid #f0f0f0', paddingBottom: 10 }}>
+                {icon && <span style={{ marginRight: 10, color: '#cf1322', fontSize: 20 }}>{icon}</span>}
+                <Title level={3} style={{ margin: 0, fontSize: 22 }}>{title}</Title>
+            </div>
+            <Slider {...sliderSettings}>
+                {products.map(p => <ProductCard key={p.id} product={p} />)}
+            </Slider>
         </div>
     );
 };
 
+// --- Main Home Component ---
 const Home = () => {
     const [loading, setLoading] = useState(true);
+    const [searchLoading, setSearchLoading] = useState(false);
     const [featuredProducts, setFeaturedProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [keywordInput, setKeywordInput] = useState("");
     const [searchResults, setSearchResults] = useState([]);
-    const [searchKeyword, setSearchKeyword] = useState("");
-    const navigate = useNavigate();
-
-    const fetchSearch = async (keyword) => {
-        if (!keyword) return;
-        setLoading(true);
-        try {
-            const res = await axios.get(`${API_URL}/products`, { params: { search: keyword } });
-            setSearchResults(res.data.data || []);
-        } catch (err) {
-            message.error("Lỗi khi tìm kiếm sản phẩm");
-        } finally { setLoading(false); }
-    };
-
-    const onSearch = (value) => {
-        const keyword = value.trim();
-        setSearchKeyword(keyword);
-        if (keyword) { fetchSearch(keyword); navigate(`/search?keyword=${encodeURIComponent(keyword)}`); }
-        else setSearchResults([]);
-    };
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const resFeatured = await axios.get(`${API_URL}/products`, { params: { featured: true } });
+                const [resFeatured, resCategories] = await Promise.all([
+                    axios.get(`${API_URL}/products`, { params: { featured: true } }),
+                    axios.get(`${API_URL}/categories/with-products`)
+                ]);
                 setFeaturedProducts(resFeatured.data.data || []);
-                const resCategories = await axios.get(`${API_URL}/categories/with-products`);
                 setCategories(resCategories.data.data || []);
-                console.log(resCategories);
-
-            } catch (err) { console.error("Lỗi khi load home:", err); }
-            finally { setLoading(false); }
+            } catch (err) {
+                console.error("Lỗi tải trang chủ:", err);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchData();
     }, []);
 
-    if (loading) return <div style={{ textAlign: "center", padding: 40 }}><Spin size="large" /></div>;
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (keywordInput.trim()) {
+                fetchSearch(keywordInput.trim());
+            } else {
+                setSearchResults([]);
+            }
+        }, 600);
+        return () => clearTimeout(timer);
+    }, [keywordInput]);
+
+    const fetchSearch = async (keyword) => {
+        setSearchLoading(true);
+        try {
+            const res = await axios.get(`${API_URL}/products`, { params: { search: keyword } });
+            setSearchResults(res.data.data || []);
+        } catch (err) {
+            message.error("Lỗi tìm kiếm");
+        } finally {
+            setSearchLoading(false);
+        }
+    };
+
+    if (loading) return (
+        <div style={{ height: '80vh', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+            <Spin size="large" />
+            <Text style={{ marginTop: 16 }} type="secondary">Đang tải dữ liệu phụ tùng...</Text>
+        </div>
+    );
 
     return (
-        <div style={{ padding: "30px 20px" }}>
-            {/* Features */}
-            <Row gutter={[24, 24]} justify="center" style={{ marginBottom: 50 }}>
-                {[
-                    { icon: <ToolOutlined />, title: "Phụ tùng chính hãng", desc: "Sản phẩm nhập khẩu và phân phối chính thức bởi Honda." },
-                    { icon: <SafetyOutlined />, title: "Chất lượng đảm bảo", desc: "Đảm bảo độ bền, an toàn cho xe máy." },
-                    { icon: <DollarOutlined />, title: "Giá cả cạnh tranh", desc: "Luôn mang đến mức giá tốt nhất." },
-                    { icon: <RocketOutlined />, title: "Giao hàng nhanh chóng", desc: "Đặt hàng dễ dàng và nhận hàng nhanh chóng trên toàn quốc." },
-                ].map((item, index) => (
-                    <Col xs={24} sm={12} md={6} key={index}>
-                        <Card hoverable style={{ borderRadius: 16, textAlign: 'center', padding: 20 }}>
-                            <div style={{ fontSize: 40, color: '#cf1322', marginBottom: 16 }}>{item.icon}</div>
-                            <Title level={4}>{item.title}</Title>
-                            <Paragraph style={{ color: '#555' }}>{item.desc}</Paragraph>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
-
-            {/* Search Box */}
-            <div style={{ maxWidth: 400, margin: "0 auto 50px" }}>
-                <Search placeholder="Tìm kiếm sản phẩm..." enterButton onSearch={onSearch} size="large" />
+        <div style={{ background: "#fbfbfb", minHeight: "100vh" }}>
+            
+            {/* 1. Hero Section */}
+            <div style={{ 
+                background: "linear-gradient(135deg, #1f1f1f 0%, #434343 100%)", 
+                padding: "80px 20px", 
+                textAlign: "center" 
+            }}>
+                <Title level={1} style={{ color: "#fff", marginBottom: 16 }}>
+                    PHỤ TÙNG HONDA CHÍNH HÃNG
+                </Title>
+                <Paragraph style={{ color: "rgba(255,255,255,0.7)", fontSize: 18, marginBottom: 40 }}>
+                    Chất lượng bền bỉ - An tâm trên mọi nẻo đường
+                </Paragraph>
+                <div style={{ maxWidth: 650, margin: "0 auto" }}>
+                    <Search
+                        placeholder="Bạn cần tìm linh kiện gì cho xế yêu?"
+                        enterButton={<div style={{ padding: '0 10px' }}><SearchOutlined /> Tìm kiếm</div>}
+                        size="large"
+                        value={keywordInput}
+                        onChange={(e) => setKeywordInput(e.target.value)}
+                        loading={searchLoading}
+                        allowClear
+                        style={{ height: 50 }}
+                    />
+                </div>
             </div>
 
-            {/* Search Results */}
-            {searchResults.length > 0 && <ProductSlider title={`Kết quả tìm kiếm cho "${searchKeyword}"`} products={searchResults} />}
+            <div style={{ maxWidth: 1300, margin: "0 auto", padding: "0 20px" }}>
+                
+                {/* 2. Trust Badges */}
+                <Row gutter={[24, 24]} style={{ marginTop: -40, marginBottom: 60 }}>
+                    {[
+                        { icon: <ToolOutlined />, title: "Chính Hãng 100%", desc: "Nhập trực tiếp từ Honda" },
+                        { icon: <SafetyOutlined />, title: "Bảo Hành Uy Tín", desc: "Theo tiêu chuẩn nhà sản xuất" },
+                        { icon: <DollarOutlined />, title: "Giá Tốt Nhất", desc: "Cạnh tranh nhất thị trường" },
+                        { icon: <RocketOutlined />, title: "Giao Hàng Nhanh", desc: "Toàn quốc 24/7" },
+                    ].map((item, index) => (
+                        <Col xs={12} md={6} key={index}>
+                            <Card variant="false" style={{ textAlign: 'center', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.08)' }}>
+                                <div style={{ fontSize: 32, color: '#cf1322', marginBottom: 12 }}>{item.icon}</div>
+                                <Title level={5} style={{ marginBottom: 4 }}>{item.title}</Title>
+                                <Text type="secondary" style={{ fontSize: 13 }}>{item.desc}</Text>
+                            </Card>
+                        </Col>
+                    ))}
+                </Row>
 
-            {/* Featured Products */}
-            <ProductSlider title="Sản phẩm nổi bật" products={featuredProducts} />
+                {/* 3. Search Results Overlay-like Section */}
+                {keywordInput && (
+                    <div style={{ 
+                        background: '#fff', 
+                        padding: '30px', 
+                        borderRadius: 16, 
+                        marginBottom: 40, 
+                        border: '2px solid #ffccc7' 
+                    }}>
+                        <ProductSlider 
+                            title={`Kết quả tìm kiếm cho: "${keywordInput}"`} 
+                            products={searchResults} 
+                            loading={searchLoading} 
+                        />
+                        {!searchLoading && searchResults.length === 0 && (
+                            <Empty description="Không tìm thấy sản phẩm nào" />
+                        )}
+                    </div>
+                )}
 
-            {/* Categories */}
-            {categories.map(cat => <ProductSlider key={cat.id} title={cat.name} products={cat.products || []} />)}
+                {/* 4. Main Content */}
+                <ProductSlider 
+                    title="SẢN PHẨM NỔI BẬT" 
+                    products={featuredProducts} 
+                    icon={<RocketOutlined />} 
+                />
+
+                {categories.map(cat => (
+                    <ProductSlider 
+                        key={cat.id} 
+                        title={cat.name.toUpperCase()} 
+                        products={cat.products || []} 
+                    />
+                ))}
+
+            </div>
+            
+            {/* 5. Footer Decoration */}
+            <div style={{ textAlign: 'center', padding: '60px 0', background: '#f0f0f0', marginTop: 80 }}>
+                <Title level={4} type="secondary">BẠN KHÔNG TÌM THẤY PHỤ TÙNG CẦN THIẾT?</Title>
+                <Text type="secondary">Gửi tin nhắn cho chúng tôi qua Zalo hoặc Hotline để được hỗ trợ tra mã miễn phí.</Text>
+            </div>
         </div>
     );
 };

@@ -2,18 +2,17 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
-    Typography,
-    Spin,
-    InputNumber,
-    Button,
-    Tag,
-    Divider
+    Typography, Spin, InputNumber, Button, Tag, Divider, Row, Col, Card, Breadcrumb, Space
 } from 'antd';
-import { ShoppingCartOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import {
+    ShoppingCartOutlined,
+    ThunderboltOutlined,
+    CheckCircleFilled,
+    HomeOutlined
+} from '@ant-design/icons';
 import axios from 'axios';
 import { CartContext } from './CartContext';
 import toast, { Toaster } from 'react-hot-toast';
-import 'antd/dist/reset.css';
 import { formatCurrency } from '../../utils/helpers';
 
 const { Title, Paragraph, Text } = Typography;
@@ -25,19 +24,18 @@ const ProductDetail = () => {
     const navigate = useNavigate();
     const { fetchCartCount } = useContext(CartContext);
 
-    const productId = location.state?.id;
+    const productId = location.state?.id; // Ưu tiên lấy từ state nếu có
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
 
-    /* ================= FETCH PRODUCT ================= */
     useEffect(() => {
         const fetchProduct = async () => {
             try {
                 const res = await axios.get(`${API_URL}/products/${slug}`);
                 setProduct(res.data.data);
             } catch (err) {
-                toast.error('Không tải được sản phẩm');
+                toast.error('Không tải được thông tin sản phẩm');
             } finally {
                 setLoading(false);
             }
@@ -45,177 +43,185 @@ const ProductDetail = () => {
         fetchProduct();
     }, [slug]);
 
-    /* ================= ADD TO CART ================= */
     const handleAddToCart = async () => {
-        if (!productId) return toast.error('Không tìm thấy ID sản phẩm');
-
         const user = JSON.parse(localStorage.getItem('user'));
         if (!user?.id) {
-            toast.error('Bạn cần đăng nhập');
+            toast.error('Vui lòng đăng nhập để mua hàng');
             return navigate('/auth/login');
         }
+
+        // Nếu không có productId từ state, dùng id từ dữ liệu product fetch về
+        const idToSubmit = productId || product?.id;
 
         try {
             await axios.post(`${API_URL}/carts/add`, {
                 userId: user.id,
-                productId,
+                productId: idToSubmit,
                 quantity
             });
-            toast.success('Đã thêm vào giỏ hàng');
+            toast.success('Đã thêm vào giỏ hàng thành công');
             fetchCartCount();
         } catch {
             toast.error('Thêm vào giỏ hàng thất bại');
         }
     };
 
-    if (loading)
-        return (
-            <div style={{ padding: 80, textAlign: 'center' }}>
-                <Spin size="large" />
-            </div>
-        );
-
-    if (!product) return <div>Sản phẩm không tồn tại</div>;
+    if (loading) return <div style={{ padding: '150px 0', textAlign: 'center' }}><Spin size="large" tip="Đang tải sản phẩm..." /></div>;
+    if (!product) return <div style={{ padding: 100, textAlign: 'center' }}><Text type="secondary">Sản phẩm không tồn tại</Text></div>;
 
     return (
-        <div style={{ background: '#f5f5f5', padding: '32px 16px' }}>
+        <div style={{ background: '#f0f2f5', padding: '20px 0 60px 0', minHeight: '100vh' }}>
             <Toaster position="top-right" />
 
-            <div
-                style={{
-                    maxWidth: 1200,
-                    margin: '0 auto',
-                    background: '#fff',
-                    borderRadius: 16,
-                    padding: 32,
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1.2fr',
-                    gap: 40
-                }}
-            >
-                {/* ===== IMAGE ===== */}
-                <div>
-                    <div
-                        style={{
-                            borderRadius: 12,
-                            overflow: 'hidden',
-                            border: '1px solid #eee'
-                        }}
-                    >
-                        <img
-                            src={product.image}
-                            alt={product.name}
-                            style={{
-                                width: '100%',
-                                height: 420,
-                                objectFit: 'cover'
-                            }}
-                        />
-                    </div>
+            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 15px' }}>
+                {/* BREADCRUMB */}
+                <Breadcrumb style={{ marginBottom: 20 }}>
+                    <Breadcrumb.Item onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+                        <HomeOutlined />
+                    </Breadcrumb.Item>
+                    <Breadcrumb.Item onClick={() => navigate('/product')} style={{ cursor: 'pointer' }}>
+                        Sản phẩm
+                    </Breadcrumb.Item>
+                    <Breadcrumb.Item>{product.name}</Breadcrumb.Item>
+                </Breadcrumb>
 
-                    {product.discount && (
-                        <Tag
-                            color="red"
-                            style={{
-                                marginTop: 12,
-                                fontSize: 14,
-                                padding: '4px 12px'
-                            }}
-                        >
-                            -{product.discount.percentage}% {product.discount.name}
-                        </Tag>
-                    )}
-                </div>
-
-                {/* ===== INFO ===== */}
-                <div>
-                    <Title level={2}>{product.name}</Title>
-
-                    {/* PRICE */}
-                    <div style={{ margin: '16px 0' }}>
-                        {product.discount ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <Text delete style={{ fontSize: 18, color: '#999' }}>
-                                    {formatCurrency(product.originalPrice)}
-                                </Text>
-                                <Text strong style={{ fontSize: 28, color: '#d4380d' }}>
-                                    {formatCurrency(product.finalPrice)}
-                                </Text>
+                <Card bordered={false} style={{ borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+                    <Row gutter={[48, 32]}>
+                        {/* LEFT: IMAGE */}
+                        <Col xs={24} md={10}>
+                            <div style={{ position: 'relative' }}>
+                                <div style={{
+                                    borderRadius: 12,
+                                    overflow: 'hidden',
+                                    border: '1px solid #f0f0f0',
+                                    backgroundColor: '#fff'
+                                }}>
+                                    <img
+                                        src={product.image}
+                                        alt={product.name}
+                                        style={{ width: '100%', display: 'block', transition: 'transform 0.3s ease' }}
+                                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    />
+                                </div>
+                                {product.discount && (
+                                    <div style={{
+                                        position: 'absolute', top: 15, left: 15,
+                                        background: '#ff4d4f', color: '#fff',
+                                        padding: '4px 12px', borderRadius: '4px',
+                                        fontWeight: 'bold', boxShadow: '0 2px 8px rgba(255,77,79,0.4)'
+                                    }}>
+                                        -{product.discount.percentage}%
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <Text strong style={{ fontSize: 28, color: '#d4380d' }}>
-                                {product.price ? formatCurrency(product.price) : 'Liên hệ'}
-                            </Text>
-                        )}
-                    </div>
+                        </Col>
 
-                    <Divider />
+                        {/* RIGHT: CONTENT */}
+                        <Col xs={24} md={14}>
+                            <Title level={2} style={{ marginBottom: 8 }}>{product.name}</Title>
 
-                    <Paragraph>
-                        <strong>Danh mục:</strong>{' '}
-                        {product.category?.name || 'Không xác định'}
-                    </Paragraph>
+                            <Space size="middle" style={{ marginBottom: 16 }}>
+                                <Tag color="blue" icon={<CheckCircleFilled />}>Chính hãng</Tag>
+                                <Text type="secondary">Danh mục: <Text strong>{product.category?.name}</Text></Text>
+                            </Space>
 
-                    <Paragraph>
-                        <strong>Tình trạng:</strong>{' '}
-                        {product.is_active ? (
-                            <Tag color="green">Còn hàng</Tag>
-                        ) : (
-                            <Tag color="red">Hết hàng</Tag>
-                        )}
-                    </Paragraph>
+                            <div style={{
+                                background: '#fafafa',
+                                padding: '16px 24px',
+                                borderRadius: 12,
+                                marginBottom: 24
+                            }}>
+                                {product.discount ? (
+                                    <Space align="baseline" size="large">
+                                        <Text strong style={{ fontSize: 32, color: '#ff4d4f' }}>
+                                            {formatCurrency(product.finalPrice)}
+                                        </Text>
+                                        <Text delete type="secondary" style={{ fontSize: 18 }}>
+                                            {formatCurrency(product.originalPrice)}
+                                        </Text>
+                                    </Space>
+                                ) : (
+                                    <Text strong style={{ fontSize: 32, color: '#ff4d4f' }}>
+                                        {formatCurrency(product.price)}
+                                    </Text>
+                                )}
+                            </div>
 
-                    <Paragraph>
-                        <strong>Mô tả:</strong>
-                        <br />
-                        {product.description || 'Không có mô tả'}
-                    </Paragraph>
+                            <div style={{ marginBottom: 24 }}>
+                                <Text strong style={{ display: 'block', marginBottom: 8 }}>Mô tả ngắn:</Text>
+                                <Paragraph style={{ color: '#595959', lineHeight: '1.8' }}>
+                                    {product.description || 'Thông tin chi tiết về sản phẩm này hiện đang được cập nhật.'}
+                                </Paragraph>
+                            </div>
 
-                    {/* QUANTITY */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 16,
-                            marginTop: 24
-                        }}
-                    >
-                        <Text strong>Số lượng:</Text>
-                        <InputNumber
-                            min={1}
-                            max={100}
-                            value={quantity}
-                            onChange={setQuantity}
-                        />
-                    </div>
+                            <Divider />
 
-                    {/* ACTION */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            gap: 16,
-                            marginTop: 32
-                        }}
-                    >
-                        <Button
-                            type="primary"
-                            size="large"
-                            icon={<ThunderboltOutlined />}
-                            style={{ background: '#fa541c' }}
-                        >
-                            Mua ngay
-                        </Button>
+                            {/* QUANTITY & ACTIONS */}
+                            <Row gutter={[16, 16]} align="middle">
+                                <Col>
+                                    <Text strong>Số lượng: </Text>
+                                    <InputNumber
+                                        min={1}
+                                        max={99}
+                                        value={quantity}
+                                        onChange={setQuantity}
+                                        style={{ marginLeft: 12, borderRadius: 6, width: 80 }}
+                                        size="large"
+                                    />
+                                </Col>
+                                <Col>
+                                    <Text type="secondary">({product.is_active ? 'Còn hàng' : 'Hết hàng'})</Text>
+                                </Col>
+                            </Row>
 
-                        <Button
-                            size="large"
-                            icon={<ShoppingCartOutlined />}
-                            onClick={handleAddToCart}
-                            disabled={!product.is_active}
-                        >
-                            Thêm vào giỏ
-                        </Button>
-                    </div>
-                </div>
+                            <Row gutter={[16, 16]} style={{ marginTop: 32 }}>
+                                <Col xs={24} sm={12}>
+                                    <Button
+                                        type="primary"
+                                        size="large"
+                                        block
+                                        icon={<ShoppingCartOutlined />}
+                                        onClick={handleAddToCart}
+                                        disabled={!product.is_active}
+                                        style={{
+                                            height: 50,
+                                            borderRadius: 8,
+                                            fontSize: 16,
+                                            fontWeight: 600,
+                                            background: '#1890ff'
+                                        }}
+                                    >
+                                        Thêm vào giỏ hàng
+                                    </Button>
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                    <Button
+                                        danger
+                                        type="primary"
+                                        size="large"
+                                        block
+                                        icon={<ThunderboltOutlined />}
+                                        disabled={!product.is_active}
+                                        style={{
+                                            height: 50,
+                                            borderRadius: 8,
+                                            fontSize: 16,
+                                            fontWeight: 600,
+                                            background: '#ff4d4f'
+                                        }}
+                                        onClick={() => {
+                                            handleAddToCart();
+                                            navigate('/cart');
+                                        }}
+                                    >
+                                        Mua ngay
+                                    </Button>
+                                </Col>
+                            </Row>
+                        </Col>
+                    </Row>
+                </Card>
             </div>
         </div>
     );
