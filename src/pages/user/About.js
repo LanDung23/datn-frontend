@@ -1,5 +1,5 @@
 import React from 'react';
-import { Row, Col, Typography, Card, Button, Tag, Divider } from 'antd';
+import { Row, Col, Typography, Card, Button, Divider } from 'antd';
 import {
     ToolOutlined,
     SafetyOutlined,

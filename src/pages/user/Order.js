@@ -36,10 +36,6 @@ const Order = () => {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('COD');
-    const [address, setAddress] = useState('');
-    const [phone, setPhone] = useState('');
-    const [firstname, setFirstName] = useState('');
-    const [lastname, setLastName] = useState('');
     const [form] = Form.useForm();
     
     const user = JSON.parse(localStorage.getItem('user'));
@@ -47,11 +43,12 @@ const Order = () => {
     const { fetchCartCount } = useContext(CartContext);
     const navigate = useNavigate();
 
+    // Tính tổng tiền đơn hàng
+    const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
     useEffect(() => {
         if (user) {
-            setFirstName(user.firstname || '');
-            setLastName(user.lastname || '');
-            setPhone(user.phone || '');
+            // Đổ dữ liệu từ localStorage vào Form của Ant Design
             form.setFieldsValue({
                 fullName: `${user.lastname || ''} ${user.firstname || ''}`.trim(),
                 phone: user.phone || '',
@@ -66,10 +63,11 @@ const Order = () => {
         try {
             const res = await axios.get(`${API_URL}/carts/${userId}`);
             setCartItems(res.data.data);
-        } catch {
+        } catch (error) {
             message.error('Không thể tải giỏ hàng');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleConfirmOrder = async () => {
@@ -83,28 +81,29 @@ const Order = () => {
                 price: item.price
             }));
 
-            const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
             const res = await axios.post(`${API_URL}/orders`, {
                 userId,
                 items,
-                totalPrice,
+                totalPrice: totalAmount,
                 note: values.note || '',
                 shipping_address: values.shippingAddress,
                 paymentMethod: paymentMethod.toLowerCase()
             });
 
+            // Nếu thanh toán PayPal, chuyển hướng sang trang thanh toán của PayPal
             if (paymentMethod === 'paypal' && res.data.approveUrl) {
-                return window.location.href = res.data.approveUrl;
+                window.location.href = res.data.approveUrl;
+                return;
             }
 
+            // Nếu COD, xóa giỏ hàng và thông báo thành công
             await axios.delete(`${API_URL}/carts/clear/${userId}`);
             fetchCartCount();
             message.success('Đặt hàng thành công!');
             navigate('/payment-success');
         } catch (error) {
-            if (error.errorFields) return; // Form validation failed
-            message.error('Lỗi khi đặt hàng');
+            if (error.errorFields) return; // Lỗi validation form, không cần hiện message
+            message.error('Lỗi khi đặt hàng: ' + (error.response?.data?.message || 'Vui lòng thử lại'));
         } finally {
             setLoading(false);
         }
@@ -117,7 +116,7 @@ const Order = () => {
             key: 'product',
             render: (product) => (
                 <Space>
-                    <img src={product.image} alt={product.name} style={{ width: 50, borderRadius: 4 }} />
+                    <img src={product.image} alt={product.name} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} />
                     <Text strong>{product.name}</Text>
                 </Space>
             )
@@ -138,8 +137,6 @@ const Order = () => {
             )
         }
     ];
-
-    const totalAmount = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     return (
         <div style={{ background: '#f5f5f5', minHeight: '100vh', padding: '24px' }}>
@@ -220,7 +217,7 @@ const Order = () => {
                                                     <img src="https://cdn-icons-png.flaticon.com/512/6491/6491490.png" alt="cod" style={{ width: 24 }} />
                                                     <div>
                                                         <Text strong>Thanh toán khi nhận hàng (COD)</Text><br/>
-                                                        <Text type="secondary" size="small">Thanh toán bằng tiền mặt khi shipper giao hàng</Text>
+                                                        <Text type="secondary" style={{ fontSize: '12px' }}>Thanh toán bằng tiền mặt khi shipper giao hàng</Text>
                                                     </div>
                                                 </Space>
                                             </Radio.Button>
@@ -229,7 +226,7 @@ const Order = () => {
                                                     <img src="https://cdn-icons-png.flaticon.com/512/174/174861.png" alt="paypal" style={{ width: 24 }} />
                                                     <div>
                                                         <Text strong>Thanh toán qua PayPal</Text><br/>
-                                                        <Text type="secondary" size="small">Thanh toán nhanh chóng và bảo mật qua thẻ quốc tế</Text>
+                                                        <Text type="secondary" style={{ fontSize: '12px' }}>Thanh toán nhanh chóng và bảo mật qua thẻ quốc tế</Text>
                                                     </div>
                                                 </Space>
                                             </Radio.Button>
@@ -280,7 +277,7 @@ const Order = () => {
                                 >
                                     XÁC NHẬN ĐẶT HÀNG
                                 </Button>
-                                <Text type="secondary" style={{ textAlign: 'center', display: 'block', marginTop: 12 }}>
+                                <Text type="secondary" style={{ textAlign: 'center', display: 'block', marginTop: 12, fontSize: '12px' }}>
                                     Bằng việc đặt hàng, bạn đồng ý với các điều khoản dịch vụ của chúng tôi.
                                 </Text>
                             </Card>

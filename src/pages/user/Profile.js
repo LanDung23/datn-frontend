@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from 'react';
 import { Form, Input, Button, Upload, message, Card, Typography, Avatar, Row, Col, Divider, Space, Tag } from 'antd';
-import { UploadOutlined, UserOutlined, EditOutlined, SaveOutlined, CloseOutlined, MailOutlined, PhoneOutlined, LockOutlined, CameraOutlined } from '@ant-design/icons';
+import { UserOutlined, EditOutlined, SaveOutlined, CloseOutlined, MailOutlined, PhoneOutlined, LockOutlined, CameraOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import normalizeFileName from '../../utils/normalizeFileName';

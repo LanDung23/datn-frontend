@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import axios from 'axios';
 import { Table, Button, InputNumber, Typography, message, Popconfirm, Empty, Image, Row, Col, Card, Divider, Space, Tag } from 'antd';
-import { DeleteOutlined, ShoppingCartOutlined, ArrowLeftOutlined, CreditCardOutlined } from '@ant-design/icons';
+import { DeleteOutlined, ShoppingCartOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { formatCurrency } from '../../utils/helpers';
 import { CartContext } from './CartContext';
 import { useNavigate } from 'react-router-dom';
